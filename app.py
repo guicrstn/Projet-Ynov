@@ -1,35 +1,32 @@
-# app.py
-
+# Importation des bibliothèques
 import streamlit as st
 from transformers import pipeline
 
-# Configuration de la page
+# Configuration générale de la page Streamlit
 st.set_page_config(page_title="Analyse de Sentiment 📊", page_icon="🌐", layout="centered")
 
-# Chargement du modèle
-@st.cache_resource
+# Chargement du modèle IA de Hugging Face
+@st.cache_resource  # Cache pour éviter de recharger le modèle à chaque rafraîchissement
 def load_model():
     return pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
 
 classifier = load_model()
 
-# Initialisation de l'historique et du chat dans la session
+# Initialisation de l'historique et des données utilisateur dans la session
 if "history" not in st.session_state:
-    st.session_state.history = []
+    st.session_state.history = []  # Stocke toutes les analyses faites
 if "chat_data" not in st.session_state:
-    st.session_state.chat_data = {"prenom": "", "nom": "", "reponses": [], "sentiment": "", "grade": "", "color": ""}
+    st.session_state.chat_data = {
+        "prenom": "", "nom": "", "reponses": [], "sentiment": "", "grade": "", "color": ""
+    }  # Stocke les réponses du test en cours
 
-# Personnalisation avancée du style Streamlit
+# Personnalisation de l'apparence du site avec du CSS
 st.markdown("""
     <style>
     .main {
-        background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80');
+        background-image: url('...');  /* Image de fond */
         background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-        padding: 2rem;
-        border-radius: 10px;
+        ...
     }
     .block-container {
         padding-top: 2rem;
@@ -37,43 +34,27 @@ st.markdown("""
         border-radius: 10px;
     }
     .grade-circle {
-        display: inline-block;
-        width: 40px;
-        height: 40px;
-        line-height: 40px;
-        border-radius: 50%;
-        text-align: center;
-        font-weight: bold;
-        font-size: 20px;
-        color: white;
+        /* Style du rond de note (A, B, C) */
     }
     .card {
-        background-color: white;
-        padding: 1rem;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        margin-bottom: 1rem;
-        transition: transform 0.2s;
+        /* Style des cartes dans l'historique */
     }
     .card:hover {
-        transform: scale(1.02);
+        transform: scale(1.02); /* Animation au survol */
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Sidebar Navigation
+# Barre latérale de navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Aller à", ["Analyse de sentiment", "Historique", "À propos"])
 
+# --- Page principale : Analyse de Sentiment ---
 if page == "Analyse de sentiment":
-    st.markdown("""
-    <h1 style='text-align: center;'>🌍 Analyse de Sentiment avec Intelligence Artificielle 📊</h1>
-    """, unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🌍 Analyse de Sentiment avec Intelligence Artificielle 📊</h1>", unsafe_allow_html=True)
+    st.info("Répondez aux questions pour analyser votre humeur générale ! 💬")
 
-    st.info("""
-    Répondez aux questions pour analyser votre humeur générale ! 💬
-    """)
-
+    # Fonction pour interpréter le résultat IA
     def interpret_sentiment(label):
         if '1 star' in label or '2 stars' in label:
             return "Mauvais", "C", "#FF0000"
@@ -84,14 +65,16 @@ if page == "Analyse de sentiment":
         else:
             return "Indéterminé", "?", "#808080"
 
-    # Formulaire utilisateur
+    # Formulaire utilisateur : Prénom et Nom
     prenom = st.text_input("👤 Votre prénom :", value=st.session_state.chat_data["prenom"])
     nom = st.text_input("👤 Votre nom :", value=st.session_state.chat_data["nom"])
 
     if prenom and nom:
+        # Mise à jour du prénom et nom dans la session
         st.session_state.chat_data["prenom"] = prenom
         st.session_state.chat_data["nom"] = nom
 
+        # Questions posées à l'utilisateur
         questions = [
             "Comment vous sentez-vous aujourd'hui ?",
             "Quel événement vous a marqué récemment ?",
@@ -100,6 +83,7 @@ if page == "Analyse de sentiment":
 
         reponses = st.session_state.chat_data["reponses"]
 
+        # Gestion de l'affichage des 3 questions une par une
         if len(reponses) < 1:
             rep1 = st.text_input(f"Question 1 : {questions[0]}", key="q1")
             if rep1:
@@ -118,26 +102,34 @@ if page == "Analyse de sentiment":
                 st.session_state.chat_data["reponses"].append(rep3)
                 st.rerun()
 
+        # Après les 3 réponses ➔ analyse de sentiment
         if len(reponses) == 3 and not st.session_state.chat_data["sentiment"]:
-            combined_text = " ".join(reponses)
-            result = classifier(combined_text)[0]
-            sentiment, grade, color = interpret_sentiment(result['label'])
-            st.session_state.chat_data.update({"sentiment": sentiment, "grade": grade, "color": color})
-            st.session_state.history.append(dict(st.session_state.chat_data))
+            combined_text = " ".join(reponses)  # Regroupe les réponses
+            result = classifier(combined_text)[0]  # Analyse IA
+            sentiment, grade, color = interpret_sentiment(result['label'])  # Interprétation
+            st.session_state.chat_data.update({
+                "sentiment": sentiment, "grade": grade, "color": color
+            })
+            st.session_state.history.append(dict(st.session_state.chat_data))  # Sauvegarde dans l'historique
             st.rerun()
 
+        # Affichage du résultat
         if st.session_state.chat_data["sentiment"]:
             st.success(f"**Sentiment global détecté :** :sparkles: {st.session_state.chat_data['sentiment']} :sparkles:")
+
+            # Affichage du grade (A, B ou C)
             st.markdown(f"""
                 <div class="grade-circle" style="background-color: {st.session_state.chat_data['color']};">
                     {st.session_state.chat_data['grade']}
                 </div>
             """, unsafe_allow_html=True)
 
+            # Bouton pour relancer un nouveau test
             if st.button("🔄 Faire un nouveau test"):
                 st.session_state.chat_data = {"prenom": "", "nom": "", "reponses": [], "sentiment": "", "grade": "", "color": ""}
                 st.rerun()
 
+# --- Page Historique ---
 elif page == "Historique":
     st.markdown("# 📜 Historique des demandes")
     if st.session_state.history:
@@ -160,13 +152,12 @@ elif page == "Historique":
     else:
         st.info("Aucune analyse enregistrée pour le moment.")
 
+# --- Page À propos ---
 elif page == "À propos":
     st.markdown("""
     # À propos de ce projet
 
     Ce projet a été réalisé dans le cadre du **YNOV Campus** 🎓.
-
-    L'objectif est de montrer comment utiliser un modèle d'intelligence artificielle pour analyser le sentiment d'une phrase et le déployer via une interface web interactive.
 
     **Technologies utilisées :**
     - Python 🐍
@@ -176,6 +167,7 @@ elif page == "À propos":
     Merci de votre visite ! 👋
     """)
 
+# --- Footer ---
 st.markdown("""
 ---
 <div style='text-align: center;'>
